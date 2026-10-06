@@ -15,6 +15,7 @@ class DeviceDetailScreen extends StatelessWidget {
             child: ListenableBuilder(
               listenable: store,
               builder: (ctx, _) {
+                if (store.devices.isEmpty) return const Center(child: CircularProgressIndicator());
                 final d = store.devices.firstWhere((x) => x.id == id, orElse: () => store.devices.first);
                 final (c, _, label) = lockMeta(d.lock);
                 final can = d.online && !d.busy;
@@ -39,11 +40,11 @@ class DeviceDetailScreen extends StatelessWidget {
                   Row(children: [
                     Expanded(
                         child: GradBtn('Khóa', icon: Icons.lock_rounded, filled: false,
-                            onTap: can ? () => store.send(d, 'LOCK') : null)),
+                            onTap: can && d.canLock ? () => store.send(d, 'LOCK') : null)),
                     const SizedBox(width: 12),
                     Expanded(
                         child: GradBtn('Mở khóa', icon: Icons.lock_open_rounded,
-                            onTap: can ? () => store.send(d, 'UNLOCK') : null)),
+                            onTap: can && d.canUnlock ? () => store.send(d, 'UNLOCK') : null)),
                   ]),
                   if (!d.online)
                     Padding(

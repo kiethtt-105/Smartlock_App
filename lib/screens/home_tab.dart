@@ -35,7 +35,12 @@ class _HomeTabState extends State<HomeTab> {
         child: ListenableBuilder(
           listenable: store,
           builder: (ctx, _) {
-            final d = store.devices[_page];
+            if (store.devices.isEmpty) {
+              return Center(
+                  child: Text(store.loaded ? 'Chưa có thiết bị nào.\nThêm khóa bằng mã trên web.' : 'Đang tải…',
+                      textAlign: TextAlign.center, style: t(15, color: C.sub)));
+            }
+            final d = store.devices[_page.clamp(0, store.devices.length - 1)];
             final (c, _, label) = lockMeta(d.lock);
             final evs = store.events.take(4).toList();
             return ListView(padding: const EdgeInsets.fromLTRB(20, 12, 20, 130), children: [
@@ -46,7 +51,7 @@ class _HomeTabState extends State<HomeTab> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_greet(), style: t(13.5, color: C.sub)),
                       const SizedBox(height: 2),
-                      Text('Nguyễn Văn A', style: t(24, w: FontWeight.w800, ls: -.6)),
+                      Text(store.userName.isEmpty ? 'Xin chào' : store.userName, style: t(24, w: FontWeight.w800, ls: -.6)),
                     ]),
                   ),
                   RoundBtn(Icons.notifications_none_rounded,

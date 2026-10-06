@@ -1,13 +1,48 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'api_client.dart';
+import 'toast.dart';
+
+DateTime _dt(dynamic v) => (v is String ? DateTime.tryParse(v)?.toLocal() : null) ?? DateTime.now();
 
 class Device {
   final String id, name, code;
-  final bool online, tamper, lockedOut;
+  final bool online, tamper, lockedOut, isOwner, wifi;
   final int battery;
+  final List<String> permissions;
   String lock; // locked | unlocked | jammed | unknown
   bool busy = false;
-  Device({required this.id, required this.name, required this.code, required this.online,
-      required this.battery, required this.lock, this.tamper = false, this.lockedOut = false});
+  Device({
+    required this.id,
+    required this.name,
+    required this.code,
+    required this.online,
+    required this.battery,
+    required this.lock,
+    this.tamper = false,
+    this.lockedOut = false,
+    this.isOwner = false,
+    this.wifi = true,
+    this.permissions = const [],
+  });
+
+  factory Device.fromJson(Map<String, dynamic> j) => Device(
+        id: '${j['id']}',
+        name: '${j['name'] ?? 'Thiết bị'}',
+        code: '${j['device_code'] ?? ''}',
+        online: j['status'] == 'online',
+        battery: (j['battery_level'] as num?)?.toInt() ?? 0,
+        lock: '${j['lock_state'] ?? 'unknown'}',
+        tamper: j['tamper'] == true || j['is_tampered'] == true,
+        lockedOut: j['locked_out'] == true || j['is_locked_out'] == true,
+        isOwner: j['is_owner'] == true,
+        wifi: j['wifi_enabled'] != false,
+        permissions: ((j['permissions'] as List?) ?? const []).map((e) => '$e').toList(),
+      );
+
+  bool _can(String p) => online && wifi && (isOwner || permissions.contains(p));
+  bool get canLock => _can('LOCK');
+  bool get canUnlock => _can('UNLOCK');
 }
 
 class Note {
@@ -15,6 +50,10 @@ class Note {
   final DateTime at;
   bool read;
   Note(this.id, this.sev, this.title, this.body, this.at, {this.read = false});
+
+  factory Note.fromJson(Map<String, dynamic> j) => Note('${j['id']}', '${j['severity'] ?? 'info'}', '${j['title'] ?? ''}',
+      '${j['message'] ?? ''}', _dt(j['created_at']),
+      read: j['is_read'] == true);
 }
 
 class AccessEvent {
@@ -22,9 +61,11 @@ class AccessEvent {
   final bool success;
   final DateTime at;
   AccessEvent(this.method, this.who, this.success, this.at, {this.reason = ''});
-}
 
-DateTime _ago(int min) => DateTime.now().subtract(Duration(minutes: min));
+  factory AccessEvent.fromJson(Map<String, dynamic> j) => AccessEvent(
+      '${j['method'] ?? ''}'.toUpperCase(), '${j['who'] ?? '—'}', j['success'] == true, _dt(j['created_at']),
+      reason: '${j['reason'] ?? ''}');
+}
 
 String ago(DateTime d) {
   final m = DateTime.now().difference(d).inMinutes;
@@ -35,44 +76,158 @@ String ago(DateTime d) {
 }
 
 class Store extends ChangeNotifier {
-  final devices = <Device>[
-    Device(id: 'door-1', name: 'Cửa chính', code: 'SL-A1B2C3', online: true, battery: 86, lock: 'locked'),
-    Device(id: 'door-2', name: 'Cửa phòng ngủ', code: 'SL-D4E5F6', online: false, battery: 18, lock: 'unknown'),
-    Device(id: 'door-3', name: 'Cổng garage', code: 'SL-77AA10', online: true, battery: 54,
-        lock: 'unlocked', tamper: true),
-  ];
+  static const _pollEvery = Duration(seconds: 4);
 
-  final notes = <Note>[
-    Note('1', 'critical', 'Cảnh báo phá khóa', 'Cổng garage phát hiện rung động bất thường.', _ago(3)),
-    Note('2', 'warning', 'Pin yếu', 'Cửa phòng ngủ còn 18% pin.', _ago(45)),
-    Note('3', 'info', 'Có người mở cửa', 'Cửa chính được mở bằng thẻ NFC.', _ago(120), read: true),
-    Note('4', 'info', 'Đã thêm phương thức 2FA', 'Google Authenticator vừa được thêm.', _ago(60 * 26), read: true),
-  ];
+  List<Device> devices = [];
+  List<Note> notes = [];
+  List<AccessEvent> events = [];
+  String userName = '', userEmail = '';
+  bool loaded = false;
 
-  final events = <AccessEvent>[
-    AccessEvent('NFC', 'Thẻ của Bố', true, _ago(8)),
-    AccessEvent('PIN', 'Mã khách', false, _ago(70), reason: 'Sai mã'),
-    AccessEvent('FACE', 'Mẹ', true, _ago(190)),
-    AccessEvent('APP', 'Bạn', true, _ago(60 * 5)),
-  ];
+  final _busyIds = <String>{};
+  final _dismissed = <String>{}; // API chưa có xoá thông báo -> chỉ ẩn trên máy này
+  Timer? _timer;
+  bool _inflight = false, _polling = false;
 
   int get unread => notes.where((n) => !n.read).length;
 
-  Future<void> send(Device d, String cmd) async {
-    if (d.busy || !d.online) return;
-    d.busy = true;
-    notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 1400)); // giả lập lệnh qua MQTT
-    d.busy = false;
-    d.lock = cmd == 'LOCK' ? 'locked' : 'unlocked';
-    events.insert(0, AccessEvent('APP', 'Bạn', true, DateTime.now()));
+  // ---------------------------------------------------------------- tải dữ liệu
+  Future<void> refresh({bool force = false}) async {
+    final b = await api.snapshot(force: force);
+    if (b == null) return; // 304: không đổi
+    _apply(b);
+  }
+
+  void _apply(Map<String, dynamic> b) {
+    List<Map<String, dynamic>> list(String k) =>
+        ((b[k] as List?) ?? const []).whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+
+    devices = list('devices').map(Device.fromJson).toList()..forEach((d) => d.busy = _busyIds.contains(d.id));
+    notes = list('notifications').map(Note.fromJson).where((n) => !_dismissed.contains(n.id)).toList();
+    events = list('history').map(AccessEvent.fromJson).toList();
+    final u = b['user'];
+    if (u is Map) userEmail = '${u['email'] ?? ''}';
+    if (u is Map) userName = '${u['full_name'] ?? ''}'.trim().isNotEmpty ? '${u['full_name']}' : '${u['username'] ?? ''}';
+    loaded = true;
     notifyListeners();
   }
 
-  void markRead(Note n) { n.read = true; notifyListeners(); }
-  void readAll() { for (final n in notes) { n.read = true; } notifyListeners(); }
-  void remove(Note n) { notes.remove(n); notifyListeners(); }
-  void pushNote(Note n) { notes.insert(0, n); notifyListeners(); } // dùng cho bước 8
+  // ---------------------------------------------------------------- polling
+  void startPolling() {
+    _polling = true;
+    _timer?.cancel();
+    _timer = Timer.periodic(_pollEvery, (_) => _tick());
+  }
+
+  void stopPolling() {
+    _polling = false;
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  void pause() => _timer?.cancel();
+
+  void resume() {
+    if (!_polling) return;
+    startPolling();
+    _tick();
+  }
+
+  Future<void> _tick() async {
+    if (_inflight) return;
+    _inflight = true;
+    try {
+      await refresh();
+    } catch (_) {/* mất mạng: giữ dữ liệu cũ, lượt sau thử lại */} finally {
+      _inflight = false;
+    }
+  }
+
+  void clear() {
+    stopPolling();
+    devices = [];
+    notes = [];
+    events = [];
+    userName = userEmail = '';
+    loaded = false;
+    _busyIds.clear();
+    _dismissed.clear();
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------- lệnh khóa
+  Device? _byId(String id) {
+    for (final d in devices) {
+      if (d.id == id) return d;
+    }
+    return null;
+  }
+
+  void _setBusy(String id, bool v) {
+    v ? _busyIds.add(id) : _busyIds.remove(id);
+    _byId(id)?.busy = v;
+    notifyListeners();
+  }
+
+  /// Gửi LOCK/UNLOCK qua API (server publish MQTT tới khóa), rồi chờ khóa báo trạng thái mới.
+  Future<void> send(Device d, String cmd) async {
+    if (d.busy || !d.online) return;
+    final target = cmd == 'LOCK' ? 'locked' : 'unlocked';
+    _setBusy(d.id, true);
+    try {
+      final res = await api.request('POST', Endpoints.deviceCommand(d.id), body: {'command': cmd});
+      var done = false;
+      for (var i = 0; i < 8 && !done; i++) {
+        await Future.delayed(const Duration(seconds: 1));
+        await refresh(force: true);
+        done = _byId(d.id)?.lock == target;
+      }
+      if (!done) toast('${d.name} chưa phản hồi. Kiểm tra lại sau ít giây.');
+      else if (res['message'] is String) toast(res['message'] as String);
+    } on ApiException catch (e) {
+      toast(e.message);
+    } finally {
+      _setBusy(d.id, false);
+    }
+  }
+
+  // ---------------------------------------------------------------- thông báo
+  Future<void> _postRead(List<String> ids) =>
+      api.request('POST', Endpoints.notificationsRead, body: {'ids': ids});
+
+  Future<void> markRead(Note n) async {
+    if (n.read) return;
+    n.read = true;
+    notifyListeners();
+    try {
+      await _postRead([n.id]);
+    } on ApiException catch (e) {
+      n.read = false;
+      notifyListeners();
+      toast(e.message);
+    }
+  }
+
+  Future<void> readAll() async {
+    final ids = notes.where((n) => !n.read).map((n) => n.id).toList();
+    if (ids.isEmpty) return;
+    for (final n in notes) {
+      n.read = true;
+    }
+    notifyListeners();
+    try {
+      await _postRead(ids);
+    } on ApiException catch (e) {
+      toast(e.message);
+      await refresh(force: true).catchError((_) {});
+    }
+  }
+
+  void remove(Note n) {
+    _dismissed.add(n.id);
+    notes.remove(n);
+    notifyListeners();
+  }
 }
 
 final store = Store();

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../core/api_client.dart';
 import '../core/auth_state.dart';
+import '../core/toast.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
 
@@ -54,9 +56,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (_busy) return;
+    final id = _email.text.trim();
+    if (id.isEmpty || _pass.text.isEmpty) {
+      toast('Nhập email và mật khẩu.');
+      return;
+    }
     setState(() => _busy = true);
-    await Future.delayed(const Duration(milliseconds: 900)); // giả lập gọi API
-    auth.login(_email.text, _pass.text);
+    try {
+      await auth.login(id, _pass.text);
+    } on ApiException catch (e) {
+      toast(e.message);
+    } catch (_) {
+      toast('Đã có lỗi xảy ra, vui lòng thử lại.');
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   @override
@@ -141,8 +155,19 @@ class _TwoFaScreenState extends State<TwoFaScreen> {
   Future<void> _submit() async {
     if (_busy) return;
     setState(() => _busy = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    auth.verifyTwoFa(_code.text);
+    try {
+      await auth.verifyTwoFa(_code.text);
+    } on ApiException catch (e) {
+      toast(e.message);
+      if (const ['CHALLENGE_EXPIRED', 'CHALLENGE_INVALID', 'ACCOUNT_LOCKED'].contains(e.code)) {
+        auth.backToLogin();
+      } else {
+        _code.clear();
+      }
+    } catch (_) {
+      toast('Đã có lỗi xảy ra, vui lòng thử lại.');
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   @override

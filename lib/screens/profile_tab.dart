@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth_state.dart';
+import '../core/store.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
 
@@ -50,14 +51,14 @@ class ProfileTab extends StatelessWidget {
                   width: 68, height: 68,
                   alignment: Alignment.center,
                   decoration: const BoxDecoration(shape: BoxShape.circle, gradient: C.grad),
-                  child: Text('N', style: t(28, w: FontWeight.w800)),
+                  child: Text(store.userName.isEmpty ? '?' : store.userName[0].toUpperCase(), style: t(28, w: FontWeight.w800)),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Nguyễn Văn A', style: t(19, w: FontWeight.w800, ls: -.4)),
+                    Text(store.userName, style: t(19, w: FontWeight.w800, ls: -.4)),
                     const SizedBox(height: 2),
-                    Text('nguyenvana@email.com', style: t(13, color: C.sub)),
+                    Text(store.userEmail, style: t(13, color: C.sub)),
                     const SizedBox(height: 10),
                     const Pill('2FA đang bật', C.green, icon: Icons.verified_user_rounded),
                   ]),

@@ -258,8 +258,15 @@ void toggleLock(BuildContext context, Device d) {
       ..showSnackBar(SnackBar(content: Text('${d.name} đang mất kết nối')));
     return;
   }
+  final cmd = d.lock == 'locked' ? 'UNLOCK' : 'LOCK';
+  if (!(cmd == 'LOCK' ? d.canLock : d.canUnlock)) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Bạn chưa có quyền điều khiển từ xa khóa này')));
+    return;
+  }
   HapticFeedback.mediumImpact();
-  store.send(d, d.lock == 'locked' ? 'UNLOCK' : 'LOCK').then((_) => HapticFeedback.heavyImpact());
+  store.send(d, cmd).then((_) => HapticFeedback.heavyImpact());
 }
 
 class GradBtn extends StatelessWidget {

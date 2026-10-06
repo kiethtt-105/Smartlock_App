@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/mock_data.dart';
+import '../core/store.dart';
 import '../core/theme.dart';
 
 class AppCard extends StatelessWidget {
