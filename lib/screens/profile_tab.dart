@@ -4,7 +4,7 @@ import '../core/auth_state.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
-import 'account_dialogs.dart';
+import 'form_pages.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});

@@ -5,7 +5,8 @@ import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/toast.dart';
 import '../widgets/ui.dart';
-import 'account_dialogs.dart';
+import 'form_pages.dart';
+import 'nfc_scan.dart';
 
 String _fmt(DateTime? d) => d == null
     ? 'Không hết hạn'
@@ -166,6 +167,18 @@ class _PinsState extends State<PinsScreen> {
       });
 }
 
+/// Form đặt tên và lưu thẻ; [uid] có sẵn (quét NFC) thì điền sẵn, để trống thì nhập tay.
+Future<void> _addCard(BuildContext context, String deviceId, String uid) => showForm(context,
+    title: 'Thêm thẻ NFC',
+    action: 'Thêm',
+    initial: [uid, ''],
+    fields: [('UID thẻ (vd 04A23B1C)', false, null), ('Tên thẻ', false, null)],
+    submit: (v) async {
+      if (v[0].isEmpty) throw ApiException('Nhập UID thẻ.');
+      await store.addCard(deviceId, v[0], v[1]);
+      return 'Đã thêm thẻ.';
+    });
+
 // ============================================================ Thẻ NFC
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
@@ -184,15 +197,14 @@ class _CardsState extends State<CardsScreen> {
           if (devs.isNotEmpty) ...[
             _picker(devs, dev, (v) => setState(() => dev = v)),
             const SizedBox(height: 14),
-            GradBtn('Thêm thẻ bằng UID', icon: Icons.add_rounded, onTap: () => showForm(context,
-                title: 'Thêm thẻ NFC',
-                action: 'Thêm',
-                fields: [('UID thẻ (vd 04:A2:3B:1C)', false, null), ('Tên thẻ', false, null)],
-                submit: (v) async {
-                  if (v[0].isEmpty) throw ApiException('Nhập UID thẻ.');
-                  await store.addCard(dev!, v[0], v[1]);
-                  return 'Đã thêm thẻ.';
-                })),
+            GradBtn('Quét thẻ bằng điện thoại', icon: Icons.nfc_rounded, onTap: () async {
+              final uid = await scanCardUid(context);
+              if (uid == null || !context.mounted) return;
+              await _addCard(context, dev!, uid);
+            }),
+            const SizedBox(height: 10),
+            GradBtn('Nhập UID bằng tay', icon: Icons.keyboard_rounded, filled: false,
+                onTap: () => _addCard(context, dev!, '')),
             const SizedBox(height: 18),
           ],
           if (store.cards.isEmpty) const EmptyBox(Icons.nfc_rounded, 'Chưa có thẻ NFC'),
@@ -218,15 +230,28 @@ class _CardsState extends State<CardsScreen> {
 }
 
 // ============================================================ Khuôn mặt
-class FacesScreen extends StatelessWidget {
+class FacesScreen extends StatefulWidget {
   const FacesScreen({super.key});
+  @override
+  State<FacesScreen> createState() => _FacesState();
+}
+
+class _FacesState extends State<FacesScreen> {
+  String? dev;
 
   @override
   Widget build(BuildContext context) => _Shell('Khuôn mặt', (ctx) {
         String dn(String id) => store.devices.where((d) => d.id == id).map((d) => d.name).firstOrNull ?? '';
+        final devs = store.devices.where((d) => d.can('manage_face_profiles')).toList();
+        dev = _pick(devs, dev);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Đăng ký khuôn mặt mới hiện làm trên web. Ở đây bạn bật/tắt hoặc xoá hồ sơ.', style: t(13, color: C.sub)),
-          const SizedBox(height: 16),
+          if (devs.isNotEmpty) ...[
+            _picker(devs, dev, (v) => setState(() => dev = v)),
+            const SizedBox(height: 14),
+            GradBtn('Đăng ký khuôn mặt', icon: Icons.face_retouching_natural_rounded,
+                onTap: () => context.push('/device/${dev!}/face')),
+            const SizedBox(height: 18),
+          ],
           if (store.faces.isEmpty) const EmptyBox(Icons.face_rounded, 'Chưa có hồ sơ khuôn mặt'),
           for (final f in store.faces)
             _Row(
@@ -249,13 +274,6 @@ class FacesScreen extends StatelessWidget {
 }
 
 // ============================================================ Chia sẻ khóa
-const _presets = {
-  'viewer': 'Chỉ xem lịch sử',
-  'guest': 'Khách / người thuê',
-  'family': 'Thành viên gia đình',
-  'manager': 'Người trông nhà',
-};
-
 class SharesScreen extends StatefulWidget {
   const SharesScreen({super.key});
   @override
@@ -265,25 +283,6 @@ class SharesScreen extends StatefulWidget {
 class _SharesState extends State<SharesScreen> {
   String? dev;
 
-  Future<void> _share(String deviceId) async {
-    final preset = await showDialog<String>(
-      context: context,
-      builder: (ctx) => SimpleDialog(title: const Text('Chọn vai trò'), children: [
-        for (final e in _presets.entries) SimpleDialogOption(onPressed: () => Navigator.pop(ctx, e.key), child: Text(e.value)),
-      ]),
-    );
-    if (preset == null || !mounted) return;
-    await showForm(context,
-        title: 'Chia sẻ (${_presets[preset]})',
-        action: 'Chia sẻ',
-        fields: [('Email hoặc tên đăng nhập', false, TextInputType.emailAddress)],
-        submit: (v) async {
-          if (v[0].isEmpty) throw ApiException('Nhập email hoặc tên đăng nhập.');
-          await store.shareDevice(deviceId, v[0], preset);
-          return 'Đã chia sẻ khóa.';
-        });
-  }
-
   @override
   Widget build(BuildContext context) => _Shell('Chia sẻ khóa', (ctx) {
         final mine = store.devices.where((d) => d.isOwner).toList();
@@ -292,7 +291,7 @@ class _SharesState extends State<SharesScreen> {
           if (mine.isNotEmpty) ...[
             _picker(mine, dev, (v) => setState(() => dev = v)),
             const SizedBox(height: 14),
-            GradBtn('Chia sẻ khóa này', icon: Icons.person_add_alt_1_rounded, onTap: () => _share(dev!)),
+            GradBtn('Chia sẻ khóa này', icon: Icons.person_add_alt_1_rounded, onTap: () => context.push('/device/${dev!}/share')),
           ],
           const Section('Bạn đã chia sẻ'),
           if (store.sharesOut.isEmpty) const EmptyBox(Icons.share_rounded, 'Chưa chia sẻ cho ai'),
@@ -301,12 +300,18 @@ class _SharesState extends State<SharesScreen> {
               s.who,
               '${s.deviceName} · hết hạn: ${_fmt(s.expiresAt)}',
               pills: [for (final p in s.permissions) Pill(p, C.cyan)],
-              trailing: IconButton(
-                icon: const Icon(Icons.person_remove_rounded, color: C.red),
-                onPressed: () async {
-                  if (await _confirm(context, 'Thu hồi quyền của ${s.who}?')) await _run(() => store.revokeShare(s), ok: 'Đã thu hồi.');
-                },
-              ),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => context.push('/device/${s.deviceId}/share', extra: s),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.person_remove_rounded, color: C.red),
+                  onPressed: () async {
+                    if (await _confirm(context, 'Thu hồi quyền của ${s.who}?')) await _run(() => store.revokeShare(s), ok: 'Đã thu hồi.');
+                  },
+                ),
+              ]),
             ),
           const Section('Được chia sẻ cho bạn'),
           if (store.sharesIn.isEmpty) const EmptyBox(Icons.key_rounded, 'Chưa có khóa nào được chia sẻ'),

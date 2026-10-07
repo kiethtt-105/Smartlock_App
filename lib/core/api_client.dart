@@ -41,6 +41,21 @@ class Endpoints {
   static String twoFaRemove(String m) => '/api/app/me/two-factor/methods/$m/remove/';
   static const notificationsRead = '/api/app/notifications/read/';
   static String notificationDelete(String id) => '/api/app/notifications/$id/';
+  // xác thực email / đặt lại mật khẩu bằng link
+  static const verifyEmail = '/api/app/auth/verify-email/';
+  static const resendVerification = '/api/app/auth/resend-verification/';
+  static const passwordResetCheck = '/api/app/auth/password-reset/check/';
+  static const passwordResetConfirm = '/api/app/auth/password-reset/confirm/';
+  // lịch sử + trực tiếp
+  static const history = '/api/app/history/';
+  static String deviceLive(String id) => '/api/app/devices/$id/live/';
+  static String commandStatus(String id) => '/api/app/commands/$id/';
+  // đầu đọc NFC
+  static String deviceReaders(String id) => '/api/app/devices/$id/nfc-readers/';
+  static String reader(String id) => '/api/app/nfc-readers/$id/';
+  // chia sẻ: danh mục quyền
+  static const permissions = '/api/app/permissions/';
+  static String deviceFaces(String id) => '/api/app/devices/$id/faces/';
 }
 
 class ApiException implements Exception {

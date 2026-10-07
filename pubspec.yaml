@@ -37,6 +37,9 @@ dependencies:
   google_fonts: ^9.0.0
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
+  webview_flutter: ^4.13.0      # đăng ký khuôn mặt (face-api.js trong WebView)
+  permission_handler: ^12.0.1   # xin quyền camera
+  nfc_manager: ^4.0.2           # quét UID thẻ bằng điện thoại
 
 dev_dependencies:
   flutter_test:

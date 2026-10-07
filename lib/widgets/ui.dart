@@ -395,9 +395,10 @@ class EventRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = e.success ? C.cyan : C.red;
     final icon = switch (e.method) {
-      'NFC' => Icons.nfc_rounded,
+      'NFC' || 'RFID' || 'NFC_PHONE' => Icons.nfc_rounded,
       'PIN' => Icons.dialpad_rounded,
       'FACE' => Icons.face_rounded,
+      'BLE' => Icons.bluetooth_rounded,
       _ => Icons.phone_iphone_rounded,
     };
     final status = e.success ? 'Thành công' : (e.reason.isEmpty ? 'Từ chối' : e.reason);

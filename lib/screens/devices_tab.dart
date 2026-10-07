@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
-import 'account_dialogs.dart';
+import 'form_pages.dart';
 
 class DevicesTab extends StatelessWidget {
   const DevicesTab({super.key});

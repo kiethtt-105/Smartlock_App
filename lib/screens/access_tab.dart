@@ -58,7 +58,7 @@ class AccessTab extends StatelessWidget {
                   ),
               ],
             ),
-            const Section('Lịch sử ra vào'),
+            Section('Lịch sử ra vào', action: 'Xem tất cả', onAction: () => context.push('/history')),
             for (int i = 0; i < evs.length; i++) EventRow(evs[i], last: i == evs.length - 1),
           ]);
         },

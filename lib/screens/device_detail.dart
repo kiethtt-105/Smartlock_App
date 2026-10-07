@@ -5,7 +5,7 @@ import '../core/theme.dart';
 import '../core/api_client.dart';
 import '../core/toast.dart';
 import '../widgets/ui.dart';
-import 'account_dialogs.dart';
+import 'form_pages.dart';
 
 class DeviceDetailScreen extends StatelessWidget {
   final String id;
@@ -111,6 +111,47 @@ class DeviceDetailScreen extends StatelessWidget {
                       ]),
                     ),
                   ],
+                  const Section('Chức năng'),
+                  Glass(
+                    padding: EdgeInsets.zero,
+                    child: Column(children: [
+                      ListTile(
+                        leading: const Icon(Icons.sensors_rounded, color: C.green),
+                        title: Text('Điều khiển trực tiếp', style: t(14.5, w: FontWeight.w600)),
+                        subtitle: Text('Trạng thái cập nhật mỗi 2 giây', style: t(12.5, color: C.sub)),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/device/${d.id}/live'),
+                      ),
+                      if (d.can('view_history'))
+                        ListTile(
+                          leading: const Icon(Icons.history_rounded, color: C.cyan),
+                          title: Text('Lịch sử ra vào', style: t(14.5, w: FontWeight.w600)),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => context.push('/history?device=${d.id}'),
+                        ),
+                      if (d.can('manage_nfc'))
+                        ListTile(
+                          leading: const Icon(Icons.nfc_rounded, color: C.violet),
+                          title: Text('Đầu đọc NFC', style: t(14.5, w: FontWeight.w600)),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => context.push('/device/${d.id}/nfc'),
+                        ),
+                      if (d.can('manage_face_profiles'))
+                        ListTile(
+                          leading: const Icon(Icons.face_retouching_natural_rounded, color: C.green),
+                          title: Text('Đăng ký khuôn mặt', style: t(14.5, w: FontWeight.w600)),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => context.push('/device/${d.id}/face'),
+                        ),
+                      if (d.isOwner)
+                        ListTile(
+                          leading: const Icon(Icons.share_rounded, color: C.amber),
+                          title: Text('Chia sẻ khóa', style: t(14.5, w: FontWeight.w600)),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => context.push('/device/${d.id}/share'),
+                        ),
+                    ]),
+                  ),
                   const Section('Lượt mở cửa gần đây'),
                   for (int i = 0; i < evs.length; i++) EventRow(evs[i], last: i == evs.length - 1),
                 ]);

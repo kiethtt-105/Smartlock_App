@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import '../core/api_client.dart';
 import '../core/auth_state.dart';
@@ -6,7 +7,7 @@ import '../core/config_service.dart';
 import '../core/toast.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
-import 'account_dialogs.dart';
+import 'form_pages.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -119,14 +120,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 10),
                     Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton(onPressed: () => showForgotPassword(context), child: const Text('Quên mật khẩu?'))),
+                        child: TextButton(onPressed: () => context.push('/forgot'), child: const Text('Quên mật khẩu?'))),
                     const SizedBox(height: 10),
                     Reveal(index: 5, child: GradBtn('Đăng nhập', loading: _busy, onTap: _submit)),
                     const SizedBox(height: 14),
                     Reveal(
                         index: 6,
                         child: Center(
-                            child: TextButton(onPressed: () => showRegister(context), child: const Text('Chưa có tài khoản? Đăng ký')))),
+                            child: TextButton(onPressed: () => context.push('/register'), child: const Text('Chưa có tài khoản? Đăng ký')))),
                     const SizedBox(height: 18),
                     Center(
                       child: ValueListenableBuilder<String>(

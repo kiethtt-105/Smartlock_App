@@ -200,6 +200,7 @@ class Store extends ChangeNotifier {
   int get faceCount => faces.length;
   int get shareCount => sharesOut.length;
   String userName = '', userEmail = '';
+  int faceMinFrames = 3; // snapshot.meta.face_min_frames
   bool loaded = false;
 
   final _busyIds = <String>{};
@@ -231,6 +232,8 @@ class Store extends ChangeNotifier {
     faces = list('faces').map(FaceItem.fromJson).toList();
     sharesOut = list('shares_out').map(ShareItem.fromJson).toList();
     sharesIn = list('shares_in').map(ShareItem.fromJson).toList();
+    final meta = b['meta'];
+    if (meta is Map) faceMinFrames = (meta['face_min_frames'] as num?)?.toInt() ?? faceMinFrames;
     final u = b['user'];
     if (u is Map) userEmail = '${u['email'] ?? ''}';
     if (u is Map) userName = '${u['full_name'] ?? ''}'.trim().isNotEmpty ? '${u['full_name']}' : '${u['username'] ?? ''}';

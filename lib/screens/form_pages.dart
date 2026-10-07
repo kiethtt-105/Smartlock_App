@@ -514,3 +514,80 @@ class OptionPage extends StatelessWidget {
         ],
       );
 }
+
+
+// ============================================================ Các form tài khoản / thiết bị (chuyển từ account_dialogs.dart)
+Future<void> showChangePassword(BuildContext context) => showForm(context,
+    title: 'Đổi mật khẩu',
+    action: 'Đổi',
+    fields: [('Mật khẩu hiện tại', true, null), ('Mật khẩu mới', true, null)],
+    submit: (v) async {
+      if (v[0].isEmpty || v[1].isEmpty) throw ApiException('Nhập mật khẩu hiện tại và mật khẩu mới.');
+      await store.changePassword(v[0], v[1]);
+      return 'Đã đổi mật khẩu. Các thiết bị khác sẽ bị đăng xuất.';
+    });
+
+Future<void> showClaimDevice(BuildContext context) => showForm(context,
+    title: 'Thêm thiết bị',
+    action: 'Thêm',
+    fields: [('Mã thiết bị (vd SL-A1B2C3)', false, null), ('Secret in trên khóa', true, null)],
+    submit: (v) async {
+      if (v[0].isEmpty || v[1].isEmpty) throw ApiException('Nhập mã thiết bị và secret.');
+      await store.claimDevice(v[0], v[1]);
+      return 'Đã thêm khóa vào tài khoản.';
+    });
+
+Future<void> showEditProfile(BuildContext context) => showForm(context,
+    title: 'Thông tin cá nhân',
+    action: 'Lưu',
+    initial: [store.userName, ''],
+    fields: [('Họ tên', false, null), ('Số điện thoại', false, TextInputType.phone)],
+    submit: (v) async {
+      await store.updateProfile(v[0], v[1]);
+      return 'Đã lưu thông tin.';
+    });
+
+/// Thiết lập / gỡ một phương thức 2FA. [method] = 'totp' | 'email'.
+Future<void> showTwoFa(BuildContext context, String method, bool enabled) async {
+  if (enabled) {
+    return showForm(context,
+        title: 'Gỡ xác thực',
+        action: 'Gỡ',
+        info: 'Nhập mật khẩu để xác nhận. Bạn không gỡ được phương thức cuối cùng khi 2FA đang bật.',
+        fields: [('Mật khẩu', true, null)],
+        submit: (v) async {
+          await store.removeTwoFa(method, v[0]);
+          return 'Đã gỡ phương thức xác thực.';
+        });
+  }
+  try {
+    if (method == 'totp') {
+      final d = await store.totpBegin();
+      if (!context.mounted) return;
+      await showForm(context,
+          title: 'Google Authenticator',
+          action: 'Xác nhận',
+          info: 'Mở Google Authenticator > Nhập khóa thiết lập, dán khóa này (không phân biệt khoảng trắng):\n\n${d['secret']}\n\nRồi nhập mã 6 số bên dưới.',
+          fields: [('Mã 6 số', false, TextInputType.number)],
+          submit: (v) async {
+            await store.totpConfirm('${d['setup_token']}', v[0]);
+            return 'Đã bật Google Authenticator.';
+          });
+    } else {
+      await store.emailOtpSend();
+      if (!context.mounted) return;
+      await showForm(context,
+          title: 'Mã qua email',
+          action: 'Xác nhận',
+          info: 'Mã xác nhận đã được gửi tới email của bạn.',
+          fields: [('Mã 6 số', false, TextInputType.number)],
+          submit: (v) async {
+            await store.emailOtpConfirm(v[0]);
+            return 'Đã bật mã qua email.';
+          });
+    }
+  } on ApiException catch (e) {
+    toast(e.message);
+  }
+}
+
