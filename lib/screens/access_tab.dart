@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
@@ -8,18 +9,18 @@ class AccessTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      (Icons.nfc_rounded, 'Thẻ NFC', '3 thẻ', C.violet),
-      (Icons.dialpad_rounded, 'Mã PIN', '2 mã', C.cyan),
-      (Icons.face_rounded, 'Khuôn mặt', '1 hồ sơ', C.amber),
-      (Icons.share_rounded, 'Chia sẻ khóa', '2 người', C.green),
-    ];
     return SafeArea(
       bottom: false,
       child: ListenableBuilder(
         listenable: store,
         builder: (ctx, _) {
           final evs = store.events;
+          final items = [
+            (Icons.nfc_rounded, 'Thẻ NFC', '${store.cardCount} thẻ', C.violet, '/access/cards'),
+            (Icons.dialpad_rounded, 'Mã PIN', '${store.pinCount} mã', C.cyan, '/access/pins'),
+            (Icons.face_rounded, 'Khuôn mặt', '${store.faceCount} hồ sơ', C.amber, '/access/faces'),
+            (Icons.share_rounded, 'Chia sẻ khóa', '${store.shareCount} người', C.green, '/access/shares'),
+          ];
           return ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 130), children: [
             Reveal(index: 0, child: Text('Truy cập', style: t(32, w: FontWeight.w800, ls: -1))),
             const SizedBox(height: 4),
@@ -36,8 +37,7 @@ class AccessTab extends StatelessWidget {
                     index: i + 1,
                     child: Glass(
                       tint: items[i].$4,
-                      onTap: () => ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(content: Text('${items[i].$2}: làm ở bước sau'))),
+                      onTap: () => context.push(items[i].$5),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

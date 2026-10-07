@@ -2,11 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
+import '../core/api_client.dart';
+import '../core/toast.dart';
 import '../widgets/ui.dart';
+import 'account_dialogs.dart';
 
 class DeviceDetailScreen extends StatelessWidget {
   final String id;
   const DeviceDetailScreen({super.key, required this.id});
+
+  Future<void> _run(Future<void> Function() f) async {
+    try {
+      await f();
+    } on ApiException catch (e) {
+      toast(e.message);
+    }
+  }
+
+  Future<void> _set(Device d, String key, bool v) => _run(() => store.updateDevice(d.id, {key: v}));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -60,6 +73,44 @@ class DeviceDetailScreen extends StatelessWidget {
                     const SizedBox(width: 10),
                     MiniStat(Icons.timer_outlined, 'Khóa tạm', d.lockedOut ? 'ĐANG' : 'Không', d.lockedOut ? C.red : C.cyan),
                   ]),
+                  if (d.isOwner) ...[
+                    const Section('Cài đặt khóa'),
+                    Glass(
+                      padding: EdgeInsets.zero,
+                      child: Column(children: [
+                        ListTile(
+                          leading: const Icon(Icons.edit_outlined),
+                          title: Text(d.name, style: t(14.5, w: FontWeight.w600)),
+                          subtitle: Text(d.location.isEmpty ? 'Chưa đặt vị trí' : d.location, style: t(12.5, color: C.sub)),
+                          onTap: () => showForm(context,
+                              title: 'Tên và vị trí',
+                              action: 'Lưu',
+                              initial: [d.name, d.location],
+                              fields: [('Tên khóa', false, null), ('Vị trí', false, null)],
+                              submit: (v) async {
+                                await store.updateDevice(d.id, {'name': v[0], 'location': v[1]});
+                                return 'Đã lưu.';
+                              }),
+                        ),
+                        SwitchListTile(
+                            secondary: const Icon(Icons.wifi_rounded), title: const Text('Wi-Fi'), value: d.wifi,
+                            onChanged: (v) => _set(d, 'wifi_enabled', v)),
+                        SwitchListTile(
+                            secondary: const Icon(Icons.bluetooth_rounded), title: const Text('Bluetooth'), value: d.bluetooth,
+                            onChanged: (v) => _set(d, 'bluetooth_enabled', v)),
+                        SwitchListTile(
+                            secondary: const Icon(Icons.nfc_rounded), title: const Text('NFC'), value: d.nfc,
+                            onChanged: (v) => _set(d, 'nfc_enabled', v)),
+                        ListTile(
+                          leading: const Icon(Icons.restart_alt_rounded, color: C.red),
+                          title: Text('Khởi động lại khóa', style: t(14.5, w: FontWeight.w600, color: C.red)),
+                          subtitle: Text(d.firmware.isEmpty ? '' : 'Firmware ${d.firmware}', style: t(12.5, color: C.sub)),
+                          enabled: d.online,
+                          onTap: () => _run(() => store.reboot(d)),
+                        ),
+                      ]),
+                    ),
+                  ],
                   const Section('Lượt mở cửa gần đây'),
                   for (int i = 0; i < evs.length; i++) EventRow(evs[i], last: i == evs.length - 1),
                 ]);

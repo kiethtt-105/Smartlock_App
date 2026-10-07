@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
+import 'account_dialogs.dart';
 
 class DevicesTab extends StatelessWidget {
   const DevicesTab({super.key});
@@ -24,8 +25,7 @@ class DevicesTab extends StatelessWidget {
               Reveal(
                 index: 5,
                 child: Tap(
-                  onTap: () => ScaffoldMessenger.of(context)
-                      .showSnackBar(const SnackBar(content: Text('Thêm thiết bị: làm ở bước sau'))),
+                  onTap: () => showClaimDevice(context),
                   child: Container(
                     height: 64,
                     alignment: Alignment.center,

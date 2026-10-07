@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 import 'push_service.dart';
@@ -34,13 +34,14 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<void> login(String identifier, String password) async {
+    final isIos = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;   // dart:io Platform không chạy trên web
     final d = await api.request('POST', Endpoints.login,
         body: {
           'identifier': identifier,
           'password': password,
           'client': 'app',
-          'platform': Platform.isIOS ? 'ios' : 'android',
-          'device_name': Platform.isIOS ? 'iPhone' : 'Android',
+          'platform': isIos ? 'ios' : 'android',
+          'device_name': kIsWeb ? 'Trình duyệt web' : (isIos ? 'iPhone' : 'Android'),
         },
         auth: false);
     if (d['two_factor_required'] == true) {

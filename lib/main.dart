@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/api_client.dart';
 import 'core/auth_state.dart';
 import 'core/config_service.dart';
+import 'core/push_service.dart';
 import 'core/store.dart';
 import 'core/theme.dart';
 import 'core/toast.dart';
@@ -10,6 +11,8 @@ import 'router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ConfigService.load();
+  await push.init(); // an toàn: Firebase chưa cấu hình thì tự bỏ qua
+  push.onOpen = () => router.go('/notifications');
   api.onSessionExpired = auth.sessionExpired; // refresh token hết hạn -> về màn đăng nhập
   auth.boot(); // nạp token đã lưu + gọi snapshot thật
   runApp(const SmartlockApp());

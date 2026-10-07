@@ -4,6 +4,7 @@ import '../core/auth_state.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../widgets/ui.dart';
+import 'account_dialogs.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -36,8 +37,15 @@ class ProfileTab extends StatelessWidget {
         ]),
       );
 
+  Widget _on(bool v) => Pill(v ? 'Đã bật' : 'Chưa bật', v ? C.green : C.sub);
+
   @override
-  Widget build(BuildContext context) => SafeArea(
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: store,
+        builder: (ctx, _) => _body(ctx),
+      );
+
+  Widget _body(BuildContext context) => SafeArea(
         bottom: false,
         child: ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 130), children: [
           Reveal(index: 0, child: Text('Tôi', style: t(32, w: FontWeight.w800, ls: -1))),
@@ -60,7 +68,9 @@ class ProfileTab extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(store.userEmail, style: t(13, color: C.sub)),
                     const SizedBox(height: 10),
-                    const Pill('2FA đang bật', C.green, icon: Icons.verified_user_rounded),
+                    store.security.enabled
+                        ? const Pill('2FA đang bật', C.green, icon: Icons.verified_user_rounded)
+                        : const Pill('2FA chưa bật', C.sub, icon: Icons.shield_outlined),
                   ]),
                 ),
               ]),
@@ -70,9 +80,12 @@ class ProfileTab extends StatelessWidget {
           Reveal(
             index: 2,
             child: _group([
-              _row(Icons.phonelink_lock_rounded, 'Google Authenticator', right: const Pill('Đã bật', C.green)),
-              _row(Icons.mail_outline_rounded, 'Mã qua email', right: const Pill('Đã bật', C.green)),
-              _row(Icons.fingerprint_rounded, 'Passkey', right: const Pill('Chỉ web', C.sub)),
+              _row(Icons.phonelink_lock_rounded, 'Google Authenticator', right: _on(store.security.totp),
+                  onTap: () => showTwoFa(context, 'totp', store.security.totp)),
+              _row(Icons.mail_outline_rounded, 'Mã qua email', right: _on(store.security.emailOtp),
+                  onTap: () => showTwoFa(context, 'email', store.security.emailOtp)),
+              _row(Icons.fingerprint_rounded, 'Passkey',
+                  right: Pill(store.security.passkeys > 0 ? '${store.security.passkeys} · chỉ web' : 'Chỉ web', C.sub)),
             ]),
           ),
           const Section('Tài khoản'),
@@ -80,8 +93,10 @@ class ProfileTab extends StatelessWidget {
             index: 3,
             child: _group([
               _row(Icons.notifications_none_rounded, 'Thông báo', onTap: () => context.push('/notifications')),
-              _row(Icons.password_rounded, 'Đổi mật khẩu'),
-              _row(Icons.history_rounded, 'Nhật ký hệ thống'),
+              _row(Icons.person_outline_rounded, 'Thông tin cá nhân', onTap: () => showEditProfile(context)),
+              _row(Icons.devices_rounded, 'Thiết bị đăng nhập', onTap: () => showSessions(context)),
+              _row(Icons.password_rounded, 'Đổi mật khẩu', onTap: () => showChangePassword(context)),
+              _row(Icons.history_rounded, 'Nhật ký hệ thống', onTap: () => showAuditLog(context)),
             ]),
           ),
           const SizedBox(height: 26),

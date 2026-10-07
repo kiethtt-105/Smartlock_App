@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "557517886534",
+    "project_id": "smartlockapp-c335a",
+    "storage_bucket": "smartlockapp-c335a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:557517886534:android:34f36a4fa5fd33c3786647",
+        "android_client_info": {
+          "package_name": "com.smartlock.smartlock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUecwM1z-70W6nKouQWYGDE8uz9lomXcI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

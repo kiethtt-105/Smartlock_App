@@ -6,12 +6,14 @@ import 'screens/access_tab.dart';
 import 'screens/auth_screens.dart';
 import 'screens/device_detail.dart';
 import 'screens/devices_tab.dart';
+import 'screens/form_pages.dart';
 import 'screens/home_tab.dart';
 import 'screens/main_shell.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/profile_tab.dart';
 
-const _authPaths = {'/splash', '/login', '/2fa'};
+const _authPaths = {'/splash', '/login', '/2fa', '/register', '/forgot'};
+const _publicPaths = {'/login', '/register', '/forgot'};   // đăng xuất rồi vẫn vào được
 
 CustomTransitionPage<void> _page(GoRouterState s, Widget child) => CustomTransitionPage<void>(
       key: s.pageKey,
@@ -37,7 +39,7 @@ final router = GoRouter(
       case AuthStatus.unknown:
         return loc == '/splash' ? null : '/splash';
       case AuthStatus.loggedOut:
-        return loc == '/login' ? null : '/login';
+        return _publicPaths.contains(loc) ? null : '/login';
       case AuthStatus.needTwoFa:
         return loc == '/2fa' ? null : '/2fa';
       case AuthStatus.loggedIn:
@@ -47,6 +49,8 @@ final router = GoRouter(
   routes: [
     GoRoute(path: '/splash', pageBuilder: (c, s) => _page(s, const SplashScreen())),
     GoRoute(path: '/login', pageBuilder: (c, s) => _page(s, const LoginScreen())),
+    GoRoute(path: '/register', pageBuilder: (c, s) => _page(s, const RegisterScreen())),
+    GoRoute(path: '/forgot', pageBuilder: (c, s) => _page(s, const ForgotPasswordScreen())),
     GoRoute(path: '/2fa', pageBuilder: (c, s) => _page(s, const TwoFaScreen())),
     GoRoute(path: '/access/pins', pageBuilder: (c, s) => _page(s, const PinsScreen())),
     GoRoute(path: '/access/cards', pageBuilder: (c, s) => _page(s, const CardsScreen())),
